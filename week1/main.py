@@ -1,56 +1,36 @@
-import pandas as pd
-import numpy as np
-import matplotlib
-import sklearn
-import os
+import cv2
+import sys
 
-    
-def load_data(path):
-    if os.path.exists(path):
-        df = pd.read_csv(path, encoding="utf-8-sig")
-        return df
-    else:
-        print("no file named ", path)
-        exit(0)
+def preprocess(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 50, 150)
+    return gray, blurred, edges
 
-def explore_structure(df):
-    print("structure: ", df.shape)
-    print(df.dtypes)
-    print(df.head)
+cap = cv2.VideoCapture(0)
 
-def show_statistics(df):
-    print(df.describe())
-    print(df.mean(numeric_only=True))
+if not cap.isOpened():
+    print("웹캠을 열 수 없습니다.")
+    sys.exit(1)
 
-def check_missing(df):
-    for col in df.columns:
-        if col in ["sleep_hours", "phone_hours", "exercise_hours"]:
-            missing_ratio = df[col].isnull().sum()/len(df)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-            if missing_ratio < 0.05:
-                missing_ratio_str = "낮음"
-            elif missing_ratio < 20:
-                missing_ratio_str = "주의"
-            else:
-                missing_ratio_str = "높음"
-            print(f"{col} mean: {df[col].mean()}, 결측률: {missing_ratio}, 심각도: {missing_ratio_str}")
+while True:
+    ret, frame = cap.read()
 
-def numpy_stats(df):
-    print(df.describe())
+    if not ret:
+        break
 
-    for col in df.select_dtypes(include="number").columns:
-        values = df[col].dropna().values
-        print(f"<{col}>")
-        print("mean: ", round(np.mean(values), 6), end=" ")
-        print("std: ", round(np.std(values), 6), end="\n\n")
+    gray, blurred, edges = preprocess(frame)
 
+    cv2.imshow("Original", frame)
+    cv2.imshow("Grayscale", gray)
+    cv2.imshow("Gaussian Blur", blurred)
+    cv2.imshow("Canny Edge", edges)
 
-if __name__ == "__main__":
-    path = "/home/myung/student-habits-project/data/student_habits.csv"
-    df = load_data(path)
-    print(df.describe())
-    explore_structure(df)
-    show_statistics(df)
-    check_missing(df)
-    numpy_stats(df)
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        break
 
+cap.release()
+cv2.destroyAllWindows()
